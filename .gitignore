@@ -1,0 +1,16 @@
+# Ignore compiled executable files (commonly without file extension on Unix)
+*.exe
+*.out
+*.elf
+*.bin
+*.hex
+a.out
+
+# For C/C++ object files
+*.o
+*.obj
+
+# Ignore executables in root or subdirectories
+**/*.exe
+**/a.out
+
