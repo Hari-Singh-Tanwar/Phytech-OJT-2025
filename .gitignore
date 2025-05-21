@@ -1,16 +1,12 @@
-# Ignore compiled executable files (commonly without file extension on Unix)
-*.exe
-*.out
-*.elf
-*.bin
-*.hex
-a.out
+# Ignore compiled executables in "Basics of C language" directory
+/Basics of C language/*.exe
+/Basics of C language/*.out
+/Basics of C language/*.elf
+/Basics of C language/*.bin
+/Basics of C language/*.hex
+/Basics of C language/a.out
 
-# For C/C++ object files
-*.o
-*.obj
-
-# Ignore executables in root or subdirectories
-**/*.exe
-**/a.out
+# Ignore object files (if any)
+/Basics of C language/*.o
+/Basics of C language/*.obj
 
