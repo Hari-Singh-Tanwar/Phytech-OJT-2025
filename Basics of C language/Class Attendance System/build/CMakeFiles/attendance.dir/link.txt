@@ -1,0 +1,1 @@
+/usr/bin/cc -Wl,--dependency-file=CMakeFiles/attendance.dir/link.d CMakeFiles/attendance.dir/main.c.o CMakeFiles/attendance.dir/student.c.o CMakeFiles/attendance.dir/attendance.c.o CMakeFiles/attendance.dir/report.c.o CMakeFiles/attendance.dir/utils.c.o -o attendance

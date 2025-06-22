@@ -1,0 +1,3 @@
+/home/hari/Documents/Phytech OJT 2025/Basics of C language/Class Attendance System/build/CMakeFiles/attendance.dir
+/home/hari/Documents/Phytech OJT 2025/Basics of C language/Class Attendance System/build/CMakeFiles/edit_cache.dir
+/home/hari/Documents/Phytech OJT 2025/Basics of C language/Class Attendance System/build/CMakeFiles/rebuild_cache.dir
