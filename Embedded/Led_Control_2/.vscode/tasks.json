@@ -1,0 +1,36 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "PlatformIO",
+			"task": "Pre-Debug",
+			"problemMatcher": [
+				"$platformio"
+			],
+			"label": "PlatformIO: Pre-Debug"
+		},
+		{
+			"type": "cppbuild",
+			"label": "C/C++: arm-none-eabi-gcc build active file",
+			"command": "/home/hari/.platformio/packages/toolchain-gccarmnoneeabi/bin/arm-none-eabi-gcc",
+			"args": [
+				"-fdiagnostics-color=always",
+				"-g",
+				"${file}",
+				"-o",
+				"${fileDirname}/${fileBasenameNoExtension}",
+				"-mthumb",
+				"-mcpu=cortex-m4",
+				""
+			],
+			"options": {
+				"cwd": "${fileDirname}"
+			},
+			"problemMatcher": [
+				"$gcc"
+			],
+			"group": "build",
+			"detail": "compiler: /home/hari/.platformio/packages/toolchain-gccarmnoneeabi/bin/arm-none-eabi-gcc"
+		}
+	]
+}
