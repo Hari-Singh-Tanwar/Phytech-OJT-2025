@@ -49,7 +49,7 @@ UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 uint32_t frequency = 0, cycletime = 0;
-float duty = 0.0;
+uint32_t duty_int = 0, duty_frac = 0; // Replace float duty with integer parts
 char message[50];
 /* USER CODE END PV */
 
@@ -103,9 +103,9 @@ int main(void)
   /* USER CODE BEGIN 2 */
   HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
   TIM2->CCR1 = 50;
-
+  uint16_t duty_cycle = 50;
   HAL_TIM_IC_Start_IT(&htim3, TIM_CHANNEL_1);
-  HAL_TIM_IC_Start_IT(&htim3, TIM_CHANNEL_2);  // Add this line
+  HAL_TIM_IC_Start_IT(&htim3, TIM_CHANNEL_2); // Add this line
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -115,8 +115,17 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+
+    TIM2->CCR1 = duty_cycle; // Update duty cycle
+    duty_cycle += 10;
+    if (duty_cycle > 840)
+    {
+      duty_cycle = 0; // Reset duty cycle if it exceeds 100%
+    }
+    HAL_UART_Transmit(&huart2, (uint8_t *)message, strlen(message), HAL_MAX_DELAY);
+    HAL_Delay(500); // Add delay to prevent getting stuck and observe changes
+    /* USER CODE END 3 */
   }
-  /* USER CODE END 3 */
 }
 
 /**
@@ -234,7 +243,7 @@ static void MX_TIM3_Init(void)
 
   /* USER CODE END TIM3_Init 1 */
   htim3.Instance = TIM3;
-  htim3.Init.Prescaler = 83;  // Adjust prescaler
+  htim3.Init.Prescaler = 83; // Adjust prescaler
   htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim3.Init.Period = 65535;
   htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
@@ -269,7 +278,7 @@ static void MX_TIM3_Init(void)
   {
     Error_Handler();
   }
-  
+
   sConfigIC.ICPolarity = TIM_INPUTCHANNELPOLARITY_FALLING;
   sConfigIC.ICSelection = TIM_ICSELECTION_INDIRECTTI;
   if (HAL_TIM_IC_ConfigChannel(&htim3, &sConfigIC, TIM_CHANNEL_2) != HAL_OK)
@@ -356,18 +365,22 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
     if (htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1)
     {
       // Get the values from both channels
-      uint32_t ic1_value = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_1);  // Rising edge
-      uint32_t ic2_value = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_2);  // Falling edge
-      
+      uint32_t ic1_value = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_1); // Rising edge
+      uint32_t ic2_value = HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_2); // Falling edge
+
       cycletime = ic1_value;
-      
+
       if (cycletime != 0)
       {
         frequency = (F_CLK / ((htim3.Init.Prescaler + 1) * cycletime));
-        duty = ((float)ic2_value * 100.0f) / cycletime;
-        
-        sprintf(message, "Freq: %lu Hz, Duty: %.1f%%\r\n", frequency, duty);
-        HAL_UART_Transmit(&huart2, (uint8_t *)message, strlen(message), HAL_MAX_DELAY);
+
+        // Calculate duty cycle as integer with 2 decimal parts
+        uint32_t duty_raw = (ic2_value * 10000) / cycletime; // Multiply by 10000 for 2 decimal precision
+        duty_int = duty_raw / 100;                           // Integer part
+        duty_frac = duty_raw % 100;                          // Fractional part (2 digits)
+
+        sprintf(message, "Freq: %lu Hz, Duty: %lu.%02lu %%\r\n", frequency, duty_int, duty_frac);
+        // HAL_UART_Transmit(&huart2, (uint8_t *)message, strlen(message), HAL_MAX_DELAY);
       }
     }
   }
