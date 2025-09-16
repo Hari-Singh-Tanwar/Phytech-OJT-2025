@@ -32,6 +32,8 @@
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
 #include <string.h>
+#include "rfid.h"
+#include "lcd_i2c.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -42,78 +44,7 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 // RC522 I2C address
-#define RC522_I2C_ADDR      0x28 << 1  // RC522 I2C mode address
 
-// RC522 Registers
-#define RC522_REG_COMMAND       0x01
-#define RC522_REG_COM_I_EN      0x02
-#define RC522_REG_DIV_I_EN      0x03
-#define RC522_REG_COM_IRQ       0x04
-#define RC522_REG_DIV_IRQ       0x05
-#define RC522_REG_ERROR         0x06
-#define RC522_REG_STATUS1       0x07
-#define RC522_REG_STATUS2       0x08
-#define RC522_REG_FIFO_DATA     0x09
-#define RC522_REG_FIFO_LEVEL    0x0A
-#define RC522_REG_WATER_LEVEL   0x0B
-#define RC522_REG_CONTROL       0x0C
-#define RC522_REG_BIT_FRAMING   0x0D
-#define RC522_REG_COLL          0x0E
-#define RC522_REG_MODE          0x11
-#define RC522_REG_TX_MODE       0x12
-#define RC522_REG_RX_MODE       0x13
-#define RC522_REG_TX_CONTROL    0x14
-#define RC522_REG_TX_ASK        0x15
-#define RC522_REG_TX_SEL        0x16
-#define RC522_REG_RX_SEL        0x17
-#define RC522_REG_RX_THRESHOLD  0x18
-#define RC522_REG_DEMOD         0x19
-#define RC522_REG_MF_TX         0x1C
-#define RC522_REG_MF_RX         0x1D
-#define RC522_REG_SERIAL_SPEED  0x1F
-#define RC522_REG_CRC_RESULT_H  0x21
-#define RC522_REG_CRC_RESULT_L  0x22
-#define RC522_REG_MOD_WIDTH     0x24
-#define RC522_REG_RF_CFG        0x26
-#define RC522_REG_GSN           0x27
-#define RC522_REG_CW_GSP        0x28
-#define RC522_REG_MOD_GSP       0x29
-#define RC522_REG_T_MODE        0x2A
-#define RC522_REG_T_PRESCALER   0x2B
-#define RC522_REG_T_RELOAD_H    0x2C
-#define RC522_REG_T_RELOAD_L    0x2D
-#define RC522_REG_T_COUNTER_VAL_H 0x2E
-#define RC522_REG_T_COUNTER_VAL_L 0x2F
-#define RC522_REG_TEST_SEL1     0x31
-#define RC522_REG_TEST_SEL2     0x32
-#define RC522_REG_TEST_PIN_EN   0x33
-#define RC522_REG_TEST_PIN_VALUE 0x34
-#define RC522_REG_TEST_BUS      0x35
-#define RC522_REG_AUTO_TEST     0x36
-#define RC522_REG_VERSION       0x37
-#define RC522_REG_ANALOG_TEST   0x38
-#define RC522_REG_TEST_DAC1     0x39
-#define RC522_REG_TEST_DAC2     0x3A
-#define RC522_REG_TEST_ADC      0x3B
-
-// RC522 Commands
-#define RC522_CMD_IDLE          0x00
-#define RC522_CMD_MEM           0x01
-#define RC522_CMD_GENERATE_RANDOM_ID 0x02
-#define RC522_CMD_CALC_CRC      0x03
-#define RC522_CMD_TRANSMIT      0x04
-#define RC522_CMD_NO_CMD_CHANGE 0x07
-#define RC522_CMD_RECEIVE       0x08
-#define RC522_CMD_TRANSCEIVE    0x0C
-#define RC522_CMD_MF_AUTHENT    0x0E
-#define RC522_CMD_SOFT_RESET    0x0F
-
-// MIFARE Commands
-#define MIFARE_CMD_REQA         0x26
-#define MIFARE_CMD_WUPA         0x52
-#define MIFARE_CMD_SEL_CL1      0x93
-#define MIFARE_CMD_SEL_CL2      0x95
-#define MIFARE_CMD_SEL_CL3      0x97
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -128,8 +59,8 @@ UART_HandleTypeDef huart2;
 SPI_HandleTypeDef hspi1;
 
 /* USER CODE BEGIN PV */
-uint8_t card_uid[10];
-uint8_t card_uid_length = 0;
+extern uint8_t card_uid[10];
+extern uint8_t card_uid_length;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -139,15 +70,6 @@ static void MX_I2C1_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_SPI1_Init(void);
 /* USER CODE BEGIN PFP */
-// RC522 Functions
-void RC522_Init(void);
-uint8_t RC522_Read_Register(uint8_t reg);
-void RC522_Write_Register(uint8_t reg, uint8_t value);
-void RC522_Reset(void);
-uint8_t RC522_Request(uint8_t req_mode, uint8_t* tag_type);
-uint8_t RC522_Anticoll(uint8_t* serial_num);
-uint8_t RC522_Communicate_With_Card(uint8_t command, uint8_t* send_data, uint8_t send_len, uint8_t* back_data, uint16_t* back_len);
-uint8_t RC522_Check_Card(void);
 void Display_Card_Info(void);
 
 // Printf redirection
@@ -193,6 +115,13 @@ int main(void)
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
   
+  // Initalising LCD
+I2C_LCD_Config(I2C_LCD_1, &hi2c1, 0x3F, 2); // Example: address 0x27, 2 rows
+I2C_LCD_Init(I2C_LCD_1);
+I2C_LCD_Clear(I2C_LCD_1);
+I2C_LCD_SetCursor(I2C_LCD_1, 0, 0);
+I2C_LCD_WriteString(I2C_LCD_1, "RFID Reader UID");
+
   // Add RC522 Reset pin configuration (PC7)
   GPIO_InitTypeDef GPIO_InitStruct = {0};
   __HAL_RCC_GPIOC_CLK_ENABLE();
@@ -215,7 +144,7 @@ int main(void)
   HAL_Delay(100);
   
   // Initialize RC522 over SPI
-  RC522_Init();
+  RC522_Init(&hspi1);
 
   // Read RC522 VERSION register to confirm communication
   uint8_t ver = RC522_Read_Register(RC522_REG_VERSION);
@@ -449,218 +378,7 @@ int __io_putchar(int ch) {
     return ch;
 }
 
-// RC522 Functions
-void RC522_Init(void) {
-    RC522_Reset();
-    HAL_Delay(50);
-    
-    // Configure RC522
-    RC522_Write_Register(RC522_REG_T_MODE, 0x8D);
-    RC522_Write_Register(RC522_REG_T_PRESCALER, 0x3E);
-    RC522_Write_Register(RC522_REG_T_RELOAD_L, 30);
-    RC522_Write_Register(RC522_REG_T_RELOAD_H, 0);
-    RC522_Write_Register(RC522_REG_TX_ASK, 0x40);
-    RC522_Write_Register(RC522_REG_MODE, 0x3D);
-    
-    // Turn on antenna
-    uint8_t value = RC522_Read_Register(RC522_REG_TX_CONTROL);
-    if (!(value & 0x03)) {
-        RC522_Write_Register(RC522_REG_TX_CONTROL, value | 0x03);
-    }
-    
-    value = RC522_Read_Register(RC522_REG_TX_CONTROL);
-    printf("RC522 initialized, antenna=%s (TX_CONTROL=0x%02X)\r\n", (value & 0x03) ? "ON" : "OFF", value);
-}
 
-uint8_t RC522_Read_Register(uint8_t reg) {
-    uint8_t addr = ((reg << 1) & 0x7E) | 0x80; // read
-    uint8_t rx = 0x00;
-    uint8_t dummy = 0x00;
-    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_RESET); // CS low
-    __NOP(); __NOP(); __NOP();
-    if (HAL_SPI_Transmit(&hspi1, &addr, 1, 100) != HAL_OK) {
-        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_SET);
-        printf("SPI TX addr err reg 0x%02X\r\n", reg);
-        return 0;
-    }
-    if (HAL_SPI_TransmitReceive(&hspi1, &dummy, &rx, 1, 100) != HAL_OK) {
-        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_SET);
-        printf("SPI TRX data err reg 0x%02X\r\n", reg);
-        return 0;
-    }
-    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_SET); // CS high
-    return rx;
-}
-
-void RC522_Write_Register(uint8_t reg, uint8_t value) {
-    uint8_t addr = (reg << 1) & 0x7E; // write
-    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_RESET); // CS low
-    __NOP(); __NOP(); __NOP();
-    if (HAL_SPI_Transmit(&hspi1, &addr, 1, 100) != HAL_OK) {
-        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_SET);
-        printf("SPI TX addr err reg 0x%02X\r\n", reg);
-        return;
-    }
-    if (HAL_SPI_Transmit(&hspi1, &value, 1, 100) != HAL_OK) {
-        HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_SET);
-        printf("SPI TX data err reg 0x%02X\r\n", reg);
-        return;
-    }
-    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_6, GPIO_PIN_SET); // CS high
-}
-
-void RC522_Reset(void) {
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_RESET);
-    HAL_Delay(10);
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_7, GPIO_PIN_SET);
-    HAL_Delay(50);
-    
-    RC522_Write_Register(RC522_REG_COMMAND, RC522_CMD_SOFT_RESET);
-    HAL_Delay(50);
-}
-
-uint8_t RC522_Request(uint8_t req_mode, uint8_t* tag_type) {
-    uint8_t status;
-    uint16_t back_bits;
-    
-    RC522_Write_Register(RC522_REG_BIT_FRAMING, 0x07);
-    
-    tag_type[0] = req_mode;
-    status = RC522_Communicate_With_Card(RC522_CMD_TRANSCEIVE, tag_type, 1, tag_type, &back_bits);
-    
-    if ((status != 0) || (back_bits != 0x10)) {
-        status = 1;
-    }
-    
-    return status;
-}
-
-uint8_t RC522_Anticoll(uint8_t* serial_num) {
-    uint8_t status;
-    uint8_t i;
-    uint8_t serial_check = 0;
-    uint16_t back_bits;
-    
-    RC522_Write_Register(RC522_REG_BIT_FRAMING, 0x00);
-    
-    serial_num[0] = MIFARE_CMD_SEL_CL1;
-    serial_num[1] = 0x20;
-    
-    status = RC522_Communicate_With_Card(RC522_CMD_TRANSCEIVE, serial_num, 2, serial_num, &back_bits);
-    
-    if (status == 0) {
-        for (i = 0; i < 4; i++) {
-            serial_check ^= serial_num[i];
-        }
-        if (serial_check != serial_num[i]) {
-            status = 1;
-        }
-    }
-    
-    return status;
-}
-
-uint8_t RC522_Communicate_With_Card(uint8_t command, uint8_t* send_data, uint8_t send_len, uint8_t* back_data, uint16_t* back_len) {
-    uint8_t status = 1;
-    uint8_t irq_en = 0x00;
-    uint8_t wait_irq = 0x00;
-    uint8_t last_bits;
-    uint8_t n;
-    uint16_t i;
-    
-    switch (command) {
-        case RC522_CMD_MF_AUTHENT:
-            irq_en = 0x12;
-            wait_irq = 0x10;
-            break;
-        case RC522_CMD_TRANSCEIVE:
-            irq_en = 0x77;
-            wait_irq = 0x30;
-            break;
-        default:
-            break;
-    }
-    
-    RC522_Write_Register(RC522_REG_COM_I_EN, irq_en | 0x80);
-    RC522_Write_Register(RC522_REG_COM_IRQ, 0x7F);
-    RC522_Write_Register(RC522_REG_FIFO_LEVEL, 0x80);
-    RC522_Write_Register(RC522_REG_COMMAND, RC522_CMD_IDLE);
-    
-    for (i = 0; i < send_len; i++) {
-        RC522_Write_Register(RC522_REG_FIFO_DATA, send_data[i]);
-    }
-    
-    RC522_Write_Register(RC522_REG_COMMAND, command);
-    
-    if (command == RC522_CMD_TRANSCEIVE) {
-        RC522_Write_Register(RC522_REG_BIT_FRAMING, RC522_Read_Register(RC522_REG_BIT_FRAMING) | 0x80);
-    }
-    
-    i = 2000;
-    do {
-        n = RC522_Read_Register(RC522_REG_COM_IRQ);
-        i--;
-    } while ((i != 0) && !(n & 0x01) && !(n & wait_irq));
-    
-    RC522_Write_Register(RC522_REG_BIT_FRAMING, RC522_Read_Register(RC522_REG_BIT_FRAMING) & (~0x80));
-    
-    if (i != 0) {
-        uint8_t err = RC522_Read_Register(RC522_REG_ERROR);
-        if (!(err & 0x1B)) {
-            status = 0;
-            
-            if (n & irq_en & 0x01) {
-                status = 1;
-            }
-            
-            if (command == RC522_CMD_TRANSCEIVE) {
-                n = RC522_Read_Register(RC522_REG_FIFO_LEVEL);
-                last_bits = RC522_Read_Register(RC522_REG_CONTROL) & 0x07;
-                
-                if (last_bits) {
-                    *back_len = (n - 1) * 8 + last_bits;
-                } else {
-                    *back_len = n * 8;
-                }
-                
-                if (n == 0) {
-                    n = 1;
-                }
-                
-                if (n > 16) {
-                    n = 16;
-                }
-                
-                for (i = 0; i < n; i++) {
-                    back_data[i] = RC522_Read_Register(RC522_REG_FIFO_DATA);
-                }
-            }
-        } else {
-            status = 1;
-            printf("RC522 ERR=0x%02X COM_IRQ=0x%02X FIFO_LVL=0x%02X\r\n",
-                   err,
-                   RC522_Read_Register(RC522_REG_COM_IRQ),
-                   RC522_Read_Register(RC522_REG_FIFO_LEVEL));
-        }
-    }
-    
-    return status;
-}
-
-uint8_t RC522_Check_Card(void) {
-    uint8_t status;
-    uint8_t tag_type[2];
-    
-    status = RC522_Request(MIFARE_CMD_REQA, tag_type);
-    if (status == 0) {
-        status = RC522_Anticoll(card_uid);
-        if (status == 0) {
-            card_uid_length = 4; // Standard MIFARE card UID length
-            return 1;
-        }
-    }
-    return 0;
-}
 
 void Display_Card_Info(void) {
     printf("\r\n========== CARD DETECTED ==========\r\n");
@@ -675,6 +393,19 @@ void Display_Card_Info(void) {
         if (i < card_uid_length - 1) printf(":");
     }
     printf("\r\n===================================\r\n");
+    
+    // Format UID as string for LCD
+    char uid_str[20] = {0};  // Buffer for UID string
+    int offset = 0;
+    for (int i = 0; i < card_uid_length; i++) {
+        offset += sprintf(uid_str + offset, "%02X", card_uid[i]);
+        if (i < card_uid_length - 1) {
+            offset += sprintf(uid_str + offset, ":");
+        }
+    }
+    
+    I2C_LCD_SetCursor(I2C_LCD_1, 1, 0);  // Second row
+    I2C_LCD_WriteString(I2C_LCD_1, uid_str);  // Write formatted UID string
     
     // Blink LED to indicate card detection
     HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_SET);
