@@ -3,7 +3,7 @@
 int main() {
   int a, b, response;
   float result = 0;
-  char buffer[10], op;
+  char op;
 
   FILE *data = fopen("data.txt", "r");
   if (data == NULL) {

@@ -4,11 +4,12 @@ TARGET = calculator
 
 SOURCES = calculator.c
 
+CFLAGS = -g -Wall -O0
 
 all: $(TARGET)
 
 $(TARGET): $(SOURCES)
-	$(CC) $(SOURCES) -o $(TARGET)
+	$(CC) $(CFLAGS) $(SOURCES) -o $(TARGET)
 
 run:
 	./$(TARGET)
