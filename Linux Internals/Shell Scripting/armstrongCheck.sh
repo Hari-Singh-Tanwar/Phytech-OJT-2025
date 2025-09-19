@@ -7,14 +7,14 @@ org=$num
 sum=0
 num_dig=${#num}
 
-if [[ ! $number =~ ^[0-9]+$ ]]; then
+if ! [[ "$num" =~ ^[0-9]+$ ]]; then
     echo "Please enter a valid positive integer."
     exit 1
 fi
 
 temp=$num
 
-while [ temp -gt 0 ]; do
+while [ $temp -gt 0 ]; do
   digit=$((temp % 10))
   pow=1
   for ((i=1 ; i<=$digit ; i++))do
@@ -30,3 +30,4 @@ if [ $sum -eq $org ]; then
 else
   echo "$org is NOT a armstrong number"
 fi
+
