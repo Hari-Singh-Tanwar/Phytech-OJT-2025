@@ -21,7 +21,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "stdio.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -59,6 +59,29 @@ static void MX_USART2_UART_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+// Function to dynamically change GPIO pin mode to output
+void Set_Pin_Output(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin)
+{
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
+  GPIO_InitStruct.Pin = GPIO_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOx, &GPIO_InitStruct);
+}
+
+// Function to dynamically change GPIO pin mode to input
+void Set_Pin_Input(GPIO_TypeDef *GPIOx, uint16_t GPIO_Pin)
+{
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
+  GPIO_InitStruct.Pin = GPIO_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOx, &GPIO_InitStruct);
+}
+
+// Microsecond delay function using TIM6
 void delay(uint16_t time)
 {
   __HAL_TIM_SET_COUNTER(&htim6, 0);
@@ -66,13 +89,13 @@ void delay(uint16_t time)
     ;
 }
 
-void DHT22_start(void)
+void DHT22_Start(void)
 {
   Set_Pin_Output(GPIOB, GPIO_PIN_5);
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_RESET);
   HAL_Delay(1200);
 
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_5);
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_5, GPIO_PIN_SET);
   delay(20);
   Set_Pin_Input(GPIOB, GPIO_PIN_5);
 }
@@ -99,7 +122,7 @@ uint8_t DHT22_Check_Response(void)
 
 uint8_t DHT22_Read(void)
 {
-  uint8_t i, j;
+  uint8_t i = 0, j;  // Initialize i to 0
   for (j = 0; j < 8; j++)
   {
     while (!(HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_5)))
@@ -153,8 +176,8 @@ int main(void)
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
  HAL_TIM_Base_Start(&htim6);  // for us Delay
- uint8_t Presence, Rh_byte1, Rh_byte2, Temp_byte1, Temp_byte2, SUM, TEMP, RH;
- float Temperature, Humidity;
+ uint8_t  Rh_byte1, Rh_byte2, Temp_byte1, Temp_byte2;//, SUM, TEMP, RH;
+//  float Temperature, Humidity;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -165,18 +188,21 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
     DHT22_Start();
-      Presence = DHT22_Check_Response();
+      // Presence = 
+      DHT22_Check_Response();
       Rh_byte1 = DHT22_Read ();
       Rh_byte2 = DHT22_Read ();
       Temp_byte1 = DHT22_Read ();
       Temp_byte2 = DHT22_Read ();
-      SUM = DHT22_Read();
+      //SUM = 
+      DHT22_Read();
 
-      TEMP = ((Temp_byte1<<8)|Temp_byte2);
-      RH = ((Rh_byte1<<8)|Rh_byte2);
+      // TEMP = ((Temp_byte1<<8)|Temp_byte2);
+      // RH = ((Rh_byte1<<8)|Rh_byte2);
+    printf("RH: %d.%d, T: %d.%d\r\n",Rh_byte1,Rh_byte2,Temp_byte1,Temp_byte2);
+      // Temperature = (float) (TEMP/10.0);
+      // Humidity = (float) (RH/10.0);
 
-      Temperature = (float) (TEMP/10.0);
-      Humidity = (float) (RH/10.0);
 
       HAL_Delay(2000);
   }
@@ -347,7 +373,20 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+int _write(int file, char *ptr, int len)
+{
 
+  uint32_t timeout = HAL_GetTick() + 100; // 100ms timeout
+  while (HAL_GetTick() < timeout)
+  {
+    if (huart2.gState == HAL_UART_STATE_READY)
+    {
+      HAL_UART_Transmit(&huart2, (uint8_t *)ptr, len, HAL_MAX_DELAY);
+      return len;
+    }
+  }
+  return -1; // Error: USB not ready or timeout
+}
 /* USER CODE END 4 */
 
 /**
